@@ -70,7 +70,7 @@ fn main() {
     
     let cert=builder.build().unwrap();
 
-    for (i, b) in cert.to_der().unwrap().iter().enumerate() {
+    for (i, b) in cert.tbs_certificate.subject_public_key_info.to_der().unwrap().iter().enumerate() {
         if i > 0 && i % 40 == 0 {
             println!("");
         }
