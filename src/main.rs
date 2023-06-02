@@ -1,7 +1,12 @@
-use der::Encode;
+use der::{Encode, AnyRef};
+use der::asn1::{UintRef, BitString};
+use rsa::pkcs1::RsaPublicKey as RsaPublicKeyPkcs1;
+use rsa::pkcs8::SubjectPublicKeyInfo;
+use rsa::pkcs1v15::SigningKey;
+use rsa::sha2::Sha256;
 use rsa::traits::PublicKeyParts;
-use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey};
-use x509_cert::spki::SubjectPublicKeyInfoOwned;
+use rsa::{RsaPrivateKey, RsaPublicKey};
+use x509_cert::spki::{AssociatedAlgorithmIdentifier};
 
 fn main() {
     let mut rng = rand::thread_rng();
@@ -9,25 +14,16 @@ fn main() {
     let priv_key = RsaPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
     let pub_key = RsaPublicKey::from(&priv_key);
 
-    // Encrypt
-    let data = b"hello world";
-    let enc_data = pub_key
-        .encrypt(&mut rng, Pkcs1v15Encrypt, &data[..])
-        .expect("failed to encrypt");
-    assert_ne!(&data[..], &enc_data[..]);
-
-    // Decrypt
-    let dec_data = priv_key
-        .decrypt(Pkcs1v15Encrypt, &enc_data)
-        .expect("failed to decrypt");
-    assert_eq!(&data[..], &dec_data[..]);
-
-    // let pub_key_der = pub_key.to_pkcs1_der().unwrap();
-    let pub_key_der =
-        rsa_der::public_key_to_der(&pub_key.n().to_bytes_be(), &pub_key.e().to_bytes_be());
+    let pub_key_der = RsaPublicKeyPkcs1 {
+        public_exponent: UintRef::new(pub_key.e().to_bytes_be().as_slice()).unwrap(),
+        modulus: UintRef::new(pub_key.n().to_bytes_be().as_slice()).unwrap(),
+    }.to_der().unwrap();
 
     let subject_public_key_info =
-        SubjectPublicKeyInfoOwned::try_from(pub_key_der.as_slice()).expect("get rsa pub key");
+    SubjectPublicKeyInfo::<AnyRef<'static>, BitString> {
+        algorithm: SigningKey::<Sha256>::ALGORITHM_IDENTIFIER,
+        subject_public_key: BitString::new(0, pub_key_der).unwrap(),
+    };
 
     for (i, b) in subject_public_key_info.to_der().unwrap().iter().enumerate() {
         if i > 0 && i % 40 == 0 {
