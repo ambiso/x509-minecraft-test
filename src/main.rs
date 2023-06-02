@@ -25,7 +25,6 @@ fn main() {
     assert_eq!(&data[..], &dec_data[..]);
 
     use der::{Encode};
-    use pkcs1::EncodeRsaPublicKey;
     use std::str::FromStr;
     use x509_cert::builder::{CertificateBuilder, Profile};
     use x509_cert::name::Name;
